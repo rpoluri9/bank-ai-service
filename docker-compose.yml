@@ -1,0 +1,23 @@
+services:
+  banking:
+    build:
+      context: .
+      dockerfile: banking-service/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      # Local event publisher by default. To publish to real Pub/Sub, set
+      # PUBSUB_ENABLED=true plus PUBSUB_PROJECT_ID, PUBSUB_TOPIC, and
+      # PUBSUB_ACCESS_TOKEN (see README "Local vs cloud").
+      - PUBSUB_ENABLED=false
+  ai:
+    build:
+      context: .
+      dockerfile: ai-service/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - BANKING_BASE_URL=http://banking:8080
+      - AI_SERVICE_PORT=8081
+    depends_on:
+      - banking
