@@ -1,4 +1,38 @@
+# Bank AI Platform — full stack with docker compose.
+#
+#   docker compose up --build
+#
+# Services:
+#   mysql    — MySQL 8.0, the banking service's runtime database
+#   banking  — Spring Boot + Spring Security banking API (:8080)
+#   ai       — Python AI service (:8081)
+#   frontend — React app served by nginx (:5173)
+#
+# Build the banking jar first (the banking Dockerfile copies it):
+#   mvn -o package -DskipTests -f banking-service/pom.xml
+#
+# Demo auth (LOCAL DEMO ONLY, see README "Demo auth"): the banking API's
+# demo user is demo/demo123 unless APP_DEMO_USERNAME / APP_DEMO_PASSWORD
+# are set. Nothing here is a real credential.
+
 services:
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-rootpass}
+      - MYSQL_DATABASE=bankai
+      - MYSQL_USER=${MYSQL_USER:-bankai}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-bankai}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpass}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   banking:
     build:
       context: .
@@ -6,10 +40,19 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/bankai?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER:-bankai}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-bankai}
+      - APP_DEMO_USERNAME=${APP_DEMO_USERNAME:-demo}
+      - APP_DEMO_PASSWORD=${APP_DEMO_PASSWORD:-demo123}
       # Local event publisher by default. To publish to real Pub/Sub, set
       # PUBSUB_ENABLED=true plus PUBSUB_PROJECT_ID, PUBSUB_TOPIC, and
       # PUBSUB_ACCESS_TOKEN (see README "Local vs cloud").
       - PUBSUB_ENABLED=false
+    depends_on:
+      mysql:
+        condition: service_healthy
+
   ai:
     build:
       context: .
@@ -18,6 +61,21 @@ services:
       - "8081:8081"
     environment:
       - BANKING_BASE_URL=http://banking:8080
+      - BANKING_AUTH_USER=${APP_DEMO_USERNAME:-demo}
+      - BANKING_AUTH_PASS=${APP_DEMO_PASSWORD:-demo123}
       - AI_SERVICE_PORT=8081
     depends_on:
       - banking
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - banking
+      - ai
+
+volumes:
+  mysql-data:

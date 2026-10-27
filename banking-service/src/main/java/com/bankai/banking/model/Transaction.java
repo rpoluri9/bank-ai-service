@@ -3,12 +3,21 @@ package com.bankai.banking.model;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 /**
  * One immutable audit-trail entry. Every money movement writes a Transaction,
- * so the full history of an account can always be reconstructed.
+ * so the full history of an account can always be reconstructed. History is
+ * read back ordered by timestamp; the service guarantees strictly increasing
+ * timestamps (see BankingService), so the order is deterministic even when
+ * several movements happen within one clock tick.
  */
+@Entity
+@Table(name = "transactions")
 public class Transaction {
+    @Id
     private String id;
     private String accountId;
     private String type; // DEPOSIT, WITHDRAWAL, TRANSFER_OUT, TRANSFER_IN

@@ -3,3 +3,6 @@ __pycache__/
 *.pyc
 .idea/
 *.class
+node_modules/
+dist/
+.env

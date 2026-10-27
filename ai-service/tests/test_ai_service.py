@@ -1,9 +1,11 @@
 """Tests for the Bank AI Platform Python AI service (stdlib unittest)."""
 
 import json
+import os
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from unittest import mock
 
 from aiservice.agent import BankAgent
 from aiservice.banking_client import BankingClient
@@ -141,6 +143,46 @@ class PublisherTests(unittest.TestCase):
         agent.ask("What is the overdraft fee?")
         self.assertEqual(len(publisher.events), 1)
         self.assertEqual(publisher.events[0]["type"], "question_answered")
+
+
+class AuthHeaderTests(unittest.TestCase):
+    """BankingClient sends Basic auth only when credentials are configured."""
+
+    @classmethod
+    def setUpClass(cls):
+        class CapturingHandler(StubBankingHandler):
+            seen = {}
+
+            def do_GET(self):
+                CapturingHandler.seen.clear()
+                CapturingHandler.seen.update(self.headers)
+                super().do_GET()
+
+        cls.handler = CapturingHandler
+        cls.server = ThreadingHTTPServer(("127.0.0.1", 0), CapturingHandler)
+        cls.port = cls.server.server_address[1]
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+
+    def test_no_credentials_means_no_auth_header(self):
+        env = {k: v for k, v in os.environ.items()
+               if k not in ("BANKING_AUTH_USER", "BANKING_AUTH_PASS")}
+        with mock.patch.dict(os.environ, env, clear=True):
+            BankingClient(base_url=f"http://127.0.0.1:{self.port}").get_balance("acc-1")
+        self.assertNotIn("Authorization", self.handler.seen)
+
+    def test_configured_credentials_send_basic_auth(self):
+        import base64
+        with mock.patch.dict(os.environ, {"BANKING_AUTH_USER": "demo",
+                                          "BANKING_AUTH_PASS": "demo123"}):
+            BankingClient(base_url=f"http://127.0.0.1:{self.port}").get_balance("acc-1")
+        expected = "Basic " + base64.b64encode(b"demo:demo123").decode("ascii")
+        self.assertEqual(expected, self.handler.seen.get("Authorization"))
 
 
 if __name__ == "__main__":

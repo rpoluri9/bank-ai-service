@@ -1,10 +1,9 @@
 package com.bankai.banking.service;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
+import java.time.Instant;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import com.bankai.banking.events.EventPublisher;
 import com.bankai.banking.events.TransactionEvent;
 import com.bankai.banking.exception.AccountNotFoundException;
@@ -12,21 +11,36 @@ import com.bankai.banking.exception.InsufficientFundsException;
 import com.bankai.banking.exception.ValidationException;
 import com.bankai.banking.model.Account;
 import com.bankai.banking.model.Transaction;
+import com.bankai.banking.repository.AccountRepository;
+import com.bankai.banking.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Core banking rules. State is held in memory (a portfolio-friendly choice:
- * no database setup is needed to run or test this service). Every money
- * movement writes an immutable Transaction (the audit trail) and publishes a
- * TransactionEvent. Balances can never go below zero.
+ * Core banking rules, now persisted with Spring Data JPA (MySQL at runtime,
+ * H2 in tests). Every money movement writes an immutable Transaction (the
+ * audit trail) and publishes a TransactionEvent. Balances can never go below
+ * zero. Transfers lock both accounts in a fixed order to avoid deadlocks.
  */
 @Service
+@Transactional
 public class BankingService {
-    private final Map<String, Account> accounts = new ConcurrentHashMap<>();
-    private final Map<String, List<Transaction>> history = new ConcurrentHashMap<>();
+    private final AccountRepository accounts;
+    private final TransactionRepository transactions;
     private final EventPublisher eventPublisher;
+    /**
+     * Last timestamp handed out. Monotonic: if the clock has not advanced
+     * since the previous transaction, the next one gets +1 nanosecond, so
+     * history ordered by timestamp is always in insertion order.
+     */
+    private final AtomicReference<Instant> lastTimestamp =
+            new AtomicReference<>(Instant.EPOCH);
 
-    public BankingService(EventPublisher eventPublisher) {
+    public BankingService(AccountRepository accounts,
+                          TransactionRepository transactions,
+                          EventPublisher eventPublisher) {
+        this.accounts = accounts;
+        this.transactions = transactions;
         this.eventPublisher = eventPublisher;
     }
 
@@ -41,24 +55,22 @@ public class BankingService {
             throw new ValidationException("openingBalance must be zero or positive");
         }
         Account account = new Account(ownerName, accountType.toUpperCase(), openingBalance);
-        accounts.put(account.getId(), account);
-        history.put(account.getId(), new ArrayList<>());
+        accounts.save(account);
         if (openingBalance.compareTo(BigDecimal.ZERO) > 0) {
             record(account, "DEPOSIT", openingBalance, "Opening balance");
         }
         return account;
     }
 
+    @Transactional(readOnly = true)
     public Account getAccount(String accountId) {
-        Account account = accounts.get(accountId);
-        if (account == null) {
-            throw new AccountNotFoundException(accountId);
-        }
-        return account;
+        return accounts.findById(accountId)
+                .orElseThrow(() -> new AccountNotFoundException(accountId));
     }
 
+    @Transactional(readOnly = true)
     public List<Account> listAccounts() {
-        return new ArrayList<>(accounts.values());
+        return accounts.findAll();
     }
 
     public Account deposit(String accountId, BigDecimal amount, String description) {
@@ -66,6 +78,7 @@ public class BankingService {
         BigDecimal valid = validAmount(amount);
         synchronized (account) {
             account.setBalance(account.getBalance().add(valid));
+            accounts.save(account);
             record(account, "DEPOSIT", valid, description);
         }
         return account;
@@ -79,6 +92,7 @@ public class BankingService {
                 throw new InsufficientFundsException();
             }
             account.setBalance(account.getBalance().subtract(valid));
+            accounts.save(account);
             record(account, "WITHDRAWAL", valid, description);
         }
         return account;
@@ -102,6 +116,8 @@ public class BankingService {
                 }
                 from.setBalance(from.getBalance().subtract(valid));
                 to.setBalance(to.getBalance().add(valid));
+                accounts.save(from);
+                accounts.save(to);
                 record(from, "TRANSFER_OUT", valid, description);
                 record(to, "TRANSFER_IN", valid, description);
             }
@@ -109,9 +125,10 @@ public class BankingService {
         return from;
     }
 
+    @Transactional(readOnly = true)
     public List<Transaction> getTransactions(String accountId) {
         getAccount(accountId);
-        return List.copyOf(history.getOrDefault(accountId, List.of()));
+        return transactions.findByAccountIdOrderByTimestampAsc(accountId);
     }
 
     private BigDecimal validAmount(BigDecimal amount) {
@@ -124,7 +141,12 @@ public class BankingService {
     private void record(Account account, String type, BigDecimal amount, String description) {
         Transaction tx = new Transaction(account.getId(), type, amount,
                 account.getBalance(), description == null ? type : description);
-        history.get(account.getId()).add(tx);
+        tx.setTimestamp(lastTimestamp.updateAndGet(
+                prev -> {
+                    Instant now = Instant.now();
+                    return now.isAfter(prev) ? now : prev.plusNanos(1);
+                }));
+        transactions.save(tx);
         eventPublisher.publish(new TransactionEvent(
                 account.getId(), type, amount, account.getBalance()));
     }

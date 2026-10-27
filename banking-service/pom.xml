@@ -15,7 +15,7 @@
     <artifactId>banking-service</artifactId>
     <version>1.0.0</version>
     <name>Bank AI Banking Service</name>
-    <description>Banking microservice for the Bank AI Platform portfolio project: accounts, deposits, withdrawals, transfers, audit trail, transaction events</description>
+    <description>Banking microservice for the Bank AI Platform portfolio project: accounts, deposits, withdrawals, transfers, audit trail, transaction events. Stack: Spring Boot + Spring Security + MySQL (runtime) / H2 (tests), React frontend.</description>
 
     <properties>
         <java.version>17</java.version>
@@ -28,7 +28,31 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- NOT included in spring-boot-starter-test: needed for @WithMockUser / httpBasic in tests. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

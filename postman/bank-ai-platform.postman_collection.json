@@ -1,1 +1,182 @@
-{"info":{"description":"Postman collection for the Bank AI Platform banking microservice (Spring Boot, port 8080) and AI service (Python, port 8081). Start the banking service first, then create an account and use its id in the later requests.","name":"Bank AI Platform - Banking APIs","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},"item":[{"item":[{"name":"Create account","request":{"body":{"mode":"raw","raw":"{\n  \"ownerName\": \"Ramesh Poluri\",\n  \"accountType\": \"SAVINGS\",\n  \"openingBalance\": 1000\n}"},"header":[{"key":"Content-Type","value":"application/json"}],"method":"POST","url":"{{banking_url}}/api/accounts"}},{"name":"List accounts","request":{"method":"GET","url":"{{banking_url}}/api/accounts"}},{"name":"Get account","request":{"method":"GET","url":"{{banking_url}}/api/accounts/{{account_id}}"}},{"name":"Deposit","request":{"body":{"mode":"raw","raw":"{\n  \"amount\": 250,\n  \"description\": \"Paycheck\"\n}"},"header":[{"key":"Content-Type","value":"application/json"}],"method":"POST","url":"{{banking_url}}/api/accounts/{{account_id}}/deposit"}},{"name":"Withdraw","request":{"body":{"mode":"raw","raw":"{\n  \"amount\": 100,\n  \"description\": \"ATM withdrawal\"\n}"},"header":[{"key":"Content-Type","value":"application/json"}],"method":"POST","url":"{{banking_url}}/api/accounts/{{account_id}}/withdraw"}},{"name":"Transfer","request":{"body":{"mode":"raw","raw":"{\n  \"toAccountId\": \"{{to_account_id}}\",\n  \"amount\": 400,\n  \"description\": \"Rent\"\n}"},"header":[{"key":"Content-Type","value":"application/json"}],"method":"POST","url":"{{banking_url}}/api/accounts/{{account_id}}/transfer"}},{"name":"Transaction history","request":{"method":"GET","url":"{{banking_url}}/api/accounts/{{account_id}}/transactions"}}],"name":"Banking"},{"item":[{"name":"Health","request":{"method":"GET","url":"{{ai_url}}/api/health"}},{"name":"Ask a document question","request":{"body":{"mode":"raw","raw":"{\n  \"question\": \"What is the overdraft fee?\"\n}"},"header":[{"key":"Content-Type","value":"application/json"}],"method":"POST","url":"{{ai_url}}/api/ask"}},{"name":"Ask for a balance (tool call)","request":{"body":{"mode":"raw","raw":"{\n  \"question\": \"What is my balance?\",\n  \"account_id\": \"{{account_id}}\"\n}"},"header":[{"key":"Content-Type","value":"application/json"}],"method":"POST","url":"{{ai_url}}/api/ask"}}],"name":"AI service"}],"variable":[{"key":"banking_url","value":"http://localhost:8080"},{"key":"ai_url","value":"http://localhost:8081"},{"key":"account_id","value":"paste-an-account-id-here"},{"key":"to_account_id","value":"paste-a-second-account-id-here"}]}
+{
+  "info": {
+    "description": "Postman collection for the Bank AI Platform: Spring Boot + Spring Security banking API (port 8080), Python AI service (port 8081), and React frontend (port 5173). Banking requests use HTTP Basic auth with the local demo user (variables banking_user / banking_password, demo/demo123 by default \u2014 demo-only, see README). The AI service has no auth of its own and ignores the extra header. Start MySQL + the banking service first, then create an account and use its id in the later requests.",
+    "name": "Bank AI Platform - Banking APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "item": [
+        {
+          "name": "Create account",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ownerName\": \"Ramesh Poluri\",\n  \"accountType\": \"SAVINGS\",\n  \"openingBalance\": 1000\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": "{{banking_url}}/api/accounts"
+          }
+        },
+        {
+          "name": "List accounts",
+          "request": {
+            "method": "GET",
+            "url": "{{banking_url}}/api/accounts"
+          }
+        },
+        {
+          "name": "Get account",
+          "request": {
+            "method": "GET",
+            "url": "{{banking_url}}/api/accounts/{{account_id}}"
+          }
+        },
+        {
+          "name": "Deposit",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 250,\n  \"description\": \"Paycheck\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": "{{banking_url}}/api/accounts/{{account_id}}/deposit"
+          }
+        },
+        {
+          "name": "Withdraw",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100,\n  \"description\": \"ATM withdrawal\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": "{{banking_url}}/api/accounts/{{account_id}}/withdraw"
+          }
+        },
+        {
+          "name": "Transfer",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toAccountId\": \"{{to_account_id}}\",\n  \"amount\": 400,\n  \"description\": \"Rent\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": "{{banking_url}}/api/accounts/{{account_id}}/transfer"
+          }
+        },
+        {
+          "name": "Transaction history",
+          "request": {
+            "method": "GET",
+            "url": "{{banking_url}}/api/accounts/{{account_id}}/transactions"
+          }
+        }
+      ],
+      "name": "Banking"
+    },
+    {
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": "{{ai_url}}/api/health"
+          }
+        },
+        {
+          "name": "Ask a document question",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"What is the overdraft fee?\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": "{{ai_url}}/api/ask"
+          }
+        },
+        {
+          "name": "Ask for a balance (tool call)",
+          "request": {
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"What is my balance?\",\n  \"account_id\": \"{{account_id}}\"\n}"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "method": "POST",
+            "url": "{{ai_url}}/api/ask"
+          }
+        }
+      ],
+      "name": "AI service"
+    }
+  ],
+  "variable": [
+    {
+      "key": "banking_url",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "ai_url",
+      "value": "http://localhost:8081"
+    },
+    {
+      "key": "account_id",
+      "value": "paste-an-account-id-here"
+    },
+    {
+      "key": "to_account_id",
+      "value": "paste-a-second-account-id-here"
+    },
+    {
+      "key": "banking_user",
+      "value": "demo"
+    },
+    {
+      "key": "banking_password",
+      "value": "demo123"
+    }
+  ],
+  "auth": {
+    "type": "basic",
+    "basic": {
+      "username": "{{banking_user}}",
+      "password": "{{banking_password}}"
+    }
+  }
+}

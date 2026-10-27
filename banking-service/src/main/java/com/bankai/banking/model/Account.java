@@ -3,9 +3,20 @@ package com.bankai.banking.model;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
-/** A bank account. Balances are kept as BigDecimal; money is never a double. */
+/**
+ * A bank account, persisted with Spring Data JPA. Balances are kept as
+ * BigDecimal; money is never a double. The id is assigned in the constructor
+ * (a UUID string), so it is stable across the API, the audit trail, and
+ * the AI service's tool calls.
+ */
+@Entity
+@Table(name = "accounts")
 public class Account {
+    @Id
     private String id;
     private String ownerName;
     private String accountType; // SAVINGS or CHECKING
